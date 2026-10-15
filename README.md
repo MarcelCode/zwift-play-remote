@@ -35,14 +35,19 @@ Disconnect the controllers from Zwift and Zwift Companion first, because only on
 2. Ride:
 
    ```bash
-   uv run zwift-remote run              # starts `claude agents`
-   uv run zwift-remote run --wait 0     # don't wait for controllers
-   uv run zwift-remote run claude       # any other command
+   uv run zwift-remote                  # starts `claude agents`
+   uv run zwift-remote --continue       # resume the last session in this folder
+   uv run zwift-remote --resume         # pick a session to resume
+   uv run zwift-remote --wait 0         # don't wait for controllers
    ```
 
-   `run` waits up to 30 s for the controllers, or until you press Ctrl+C, and then starts Claude Code. Connection messages go to `~/.cache/zwift-play-remote.log` after that.
+   Flags that zwift-remote doesn't know are passed to `claude`. `zwift-remote --continue` runs `claude --continue`, because `claude agents` doesn't take session flags. From that session, ◀ on an empty prompt moves it to the background and opens agent view. Without flags you get `claude agents` (the `command` in `config.toml`).
 
-On exit (Ctrl+C in `events`, or quitting Claude Code in `run`), the controllers are disconnected, which takes a couple of seconds. Pressing Ctrl+C again doesn't skip this. If the daemon gets killed some other way, BlueZ keeps the controllers connected, and the next start disconnects them first.
+   zwift-remote waits up to 30 s for the controllers, or until you press Ctrl+C, and then starts Claude Code. Connection messages go to `~/.cache/zwift-play-remote.log` after that.
+
+   To use it from any folder, install it once with `uv tool install --editable .` and drop the `uv run`.
+
+On exit (Ctrl+C in `events`, or quitting Claude Code), the controllers are disconnected, which takes a couple of seconds. Pressing Ctrl+C again doesn't skip this. If the daemon gets killed some other way, BlueZ keeps the controllers connected, and the next start disconnects them first.
 
 ## Button map
 

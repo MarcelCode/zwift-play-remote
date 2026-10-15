@@ -1,7 +1,7 @@
 """Zwift controllers -> keystrokes for Claude Code's agent view.
 
-`zwift-remote run` starts `claude agents` in a pseudo-terminal and types into it
-when controller buttons are pressed. `zwift-remote events` only prints events.
+`zwift-remote` starts `claude agents` (or `claude <flags>`) in a pseudo-terminal and
+types into it when controller buttons are pressed. `zwift-remote events` only prints events.
 """
 
 import argparse
@@ -217,15 +217,30 @@ async def print_events() -> None:
     await ControllerManager(on_event).run()
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(prog="zwift-remote", description=__doc__.splitlines()[0])
+def parse_args(argv: list[str]) -> tuple[str, argparse.Namespace, list[str]]:
+    """Split the command line into mode, our own options and the flags meant for Claude Code."""
+    parser = argparse.ArgumentParser(
+        prog="zwift-remote",
+        usage="zwift-remote [run | events] [--config PATH] [--wait SECONDS] [CLAUDE_FLAGS ...]",
+        description=__doc__.splitlines()[0],
+        epilog="Without CLAUDE_FLAGS this starts `claude agents`. Any other flags go to `claude`, "
+        "e.g. `zwift-remote --continue` or `zwift-remote --resume`.",
+        allow_abbrev=False,
+    )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    sub = parser.add_subparsers(dest="mode")
-    sub.add_parser("events", help="print button events, don't start Claude Code")
-    run_parser = sub.add_parser("run", help="start Claude Code and drive it with the controllers (default)")
-    run_parser.add_argument("--wait", type=float, default=30, help="seconds to wait for controllers before starting")
-    run_parser.add_argument("command", nargs="*", help="command to run instead of the one in the config")
-    args = parser.parse_args()
+    parser.add_argument("--wait", type=float, default=30, help="seconds to wait for controllers before starting")
+    mode = argv[0] if argv[:1] in (["run"], ["events"]) else "run"
+    args, claude_flags = parser.parse_known_args(argv[1:] if argv[:1] == [mode] else argv)
+    return mode, args, claude_flags
+
+
+def claude_command(config: Config, claude_flags: list[str]) -> list[str]:
+    # `claude agents` doesn't take session flags like --continue/--resume, so flags go to plain `claude`.
+    return [config.command[0], *claude_flags] if claude_flags else config.command
+
+
+def main() -> None:
+    mode, args, claude_flags = parse_args(sys.argv[1:])
 
     LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
     console = logging.StreamHandler()
@@ -236,12 +251,11 @@ def main() -> None:
     )
 
     try:
-        if args.mode == "events":
+        if mode == "events":
             asyncio.run(print_events())
         else:
             config = load_config(args.config)
-            command = getattr(args, "command", None) or config.command
-            sys.exit(asyncio.run(run(config, command, getattr(args, "wait", 30), console)))
+            sys.exit(asyncio.run(run(config, claude_command(config, claude_flags), args.wait, console)))
     except KeyboardInterrupt:
         pass
     finally:

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from daemon import DEFAULT_CONFIG, Binding, Config, Mapper, load_config
+from daemon import DEFAULT_CONFIG, Binding, Config, Mapper, claude_command, load_config, parse_args
 from inject.keys import encode
 from zwiftplay.events import ButtonDown, ButtonUp
 
@@ -116,3 +116,25 @@ def test_other_button_stops_toggle_before_its_key():
 
     asyncio.run(go())
     assert sent[-1] == b"\x1b" and set(sent[:-1]) == {b" "}
+
+
+@pytest.mark.parametrize(
+    "argv, mode, wait, flags",
+    [
+        ([], "run", 30, []),
+        (["--continue"], "run", 30, ["--continue"]),
+        (["run", "--resume", "abc"], "run", 30, ["--resume", "abc"]),
+        (["--wait", "0", "-r", "abc", "--model", "opus"], "run", 0, ["-r", "abc", "--model", "opus"]),
+        (["events"], "events", 30, []),
+    ],
+)
+def test_parse_args_forwards_unknown_flags_to_claude(argv, mode, wait, flags):
+    parsed_mode, args, claude_flags = parse_args(argv)
+    assert (parsed_mode, args.wait, claude_flags) == (mode, wait, flags)
+
+
+def test_claude_command():
+    config = make_config()
+    config = Config(**{**config.__dict__, "command": ["claude", "agents"]})
+    assert claude_command(config, []) == ["claude", "agents"]
+    assert claude_command(config, ["--continue"]) == ["claude", "--continue"]
