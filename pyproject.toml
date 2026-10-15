@@ -1,0 +1,21 @@
+[project]
+name = "zwift-play-remote"
+version = "0.1.0"
+description = "Drive Claude Code's agent view with Zwift Play / Click controllers over Bluetooth"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["bleak>=0.22"]
+
+[project.scripts]
+zwift-remote = "daemon:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["zwiftplay", "inject"]
+py-modules = ["daemon"]

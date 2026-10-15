@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "agent_needs_input",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/path/to/zwift-play-remote/hooks/agent-needs-input.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
