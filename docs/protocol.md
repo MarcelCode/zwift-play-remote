@@ -18,7 +18,7 @@ Controllers advertise manufacturer data with company ID `0x094A` (Zwift, Inc.). 
 | `0x03` | Zwift Play, left half (firmware 1.x) |
 | `0x0E` | Zwift Play on firmware 2.x (speaks the Ride protocol) |
 | `0x09` | Zwift Click |
-| `0x0A` / `0x0B` | Zwift Click v2 right / left (unconfirmed) |
+| `0x0A` / `0x0B` | Zwift Click v2 right / left (confirmed on hardware) |
 | `0x07` / `0x08` | Zwift Ride right / left |
 
 Controllers sleep when idle and only advertise for a while after **a button press**. Each Play half is a separate BLE peripheral, so you have to press a button on each. A controller can be connected to only one host at a time.
@@ -32,6 +32,10 @@ Service `00000001-19ca-4651-86e5-fa29dcdd09d1`. Newer Ride-protocol devices use 
 | `00000002-19ca-4651-86e5-fa29dcdd09d1` | ASYNC | notify | button state, battery |
 | `00000003-19ca-4651-86e5-fa29dcdd09d1` | SYNC_RX | write (no response) | commands to the device |
 | `00000004-19ca-4651-86e5-fa29dcdd09d1` | SYNC_TX | indicate | command responses |
+
+## Connection lifetime
+
+BlueZ keeps a connection open after the process that made it dies (SIGKILL, crash, a second Ctrl+C during shutdown). A connected controller doesn't advertise, so it can't be found again. `ble.disconnect_all()` runs `bluetoothctl disconnect` for every connected device named `Zwift*`, both at startup and at exit.
 
 ## Handshake
 
@@ -48,10 +52,14 @@ The first byte is the message type and the rest is a protobuf message.
 | `0x07` | `PlayKeyPadStatus` (Zwift Play firmware 1.x) |
 | `0x37` | `ClickKeyPadStatus` (Zwift Click) |
 | `0x23` | `RideKeyPadStatus` (Ride, Play firmware 2.x, Click v2) |
-| `0x19` | battery: field 1 = percent |
+| `0x19` | battery: the payload's single varint is the percent (field 1 on the Play, field 2 on the Click v2: `19 10 64` = 100 %) |
 | `0x15` | empty / keep-alive, sent when nothing happens |
 
-The device sends the full state on every change and resends identical states, so `ble.py` diffs consecutive states to produce `ButtonDown` / `ButtonUp`.
+The device sends the full state on every change and repeats it about every 90 ms, so `ble.py` diffs consecutive states to produce `ButtonDown` / `ButtonUp`.
+
+**The left Click v2 relays the right one's buttons.** A press on the right Click arrives from both halves, 10–90 ms apart, with the same `ButtonMap`. Left-side buttons arrive only from the left Click. `ble.py` therefore merges the state of all controllers into one set, so a button counts as held while any controller reports it, and diffs that set.
+
+Captured Click v2 frames (`23 08 <ButtonMap varint>`): `ff ff ff ff 0f` idle, `fe ff ff ff 0f` D-pad left, `fd ff ff ff 0f` up, `fb ff ff ff 0f` right, `f7 ff ff ff 0f` down, `ef ff ff ff 0f` A, `df ff ff ff 0f` B, `bf ff ff ff 0f` Y, `ff fe ff ff 0f` Z, `ff fd ff ff 0f` left shift (shift-up L), `ff df ff ff 0f` right shift (shift-up R). The Click v2 also sends `0x2A` log messages (for example `Batt. Volt. 2945 mV`), which are ignored.
 
 ```proto
 enum PlayButtonStatus { ON = 0; OFF = 1; }   // active-low
@@ -94,7 +102,7 @@ These are the latest firmware versions BikeControl supports, so treat them as kn
 | Zwift Play | 1.3.1 (firmware 1.x protocol), 2.0.1 (Ride protocol) |
 | Zwift Click | 1.1.0 |
 
-A Click v2 or Ride v2 on newer firmware hides the custom service until it has been unlocked in the Zwift app. BikeControl implements that unlock, but this project doesn't.
+The Click v2 tested here works with the plain `RideOn` handshake, without any unlock. A Click v2 or Ride v2 on newer firmware may hide the custom service until it has been unlocked in the Zwift app. BikeControl implements that unlock, but this project doesn't.
 
 Firmware updates only come through the Zwift Companion app. Before updating, check that the controllers still connect afterwards.
 

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import shutil
 from collections.abc import Callable
 
 from bleak import BleakClient, BleakScanner
@@ -25,8 +26,18 @@ class ControllerManager:
         self.on_event = on_event
         self.scan_seconds = scan_seconds
         self.connected: dict[str, str] = {}  # address -> controller kind
+        self._pressed: dict[str, frozenset[str]] = {}  # address -> buttons it reports held
+
+    def _update(self, address: str, buttons: frozenset[str]) -> None:
+        # A button is held while any controller reports it: the left Click v2 relays
+        # the right one's buttons, so the same press arrives from both.
+        before = frozenset().union(*self._pressed.values())
+        self._pressed[address] = buttons
+        for event in diff(before, frozenset().union(*self._pressed.values())):
+            self.on_event(event)
 
     async def run(self) -> None:
+        await disconnect_all()
         sessions: set[asyncio.Task] = set()
         try:
             while True:
@@ -41,22 +52,21 @@ class ControllerManager:
                     task.add_done_callback(sessions.discard)
                 await asyncio.sleep(1)
         finally:
+            if sessions:
+                log.info("Disconnecting %d controller(s)...", len(sessions))
             for task in sessions:
                 task.cancel()
             await asyncio.gather(*sessions, return_exceptions=True)
 
     async def _session(self, device, kind: str) -> None:
-        pressed: frozenset[str] = frozenset()
         battery = None
 
         def on_notify(_, data: bytearray) -> None:
-            nonlocal pressed, battery
+            nonlocal battery
             data = bytes(data)
             buttons = protocol.decode_buttons(data)
             if buttons is not None:
-                for event in diff(pressed, buttons):
-                    self.on_event(event)
-                pressed = buttons
+                self._update(device.address, buttons)
             elif (level := protocol.decode_battery(data)) is not None and level != battery:
                 battery = level
                 log.info("%s battery %d%%", kind, level)
@@ -72,7 +82,31 @@ class ControllerManager:
         except (BleakError, TimeoutError) as e:
             log.warning("%s (%s): %s", kind, device.address, e)
         finally:
-            for event in diff(pressed, frozenset()):
-                self.on_event(event)
+            self._update(device.address, frozenset())
+            del self._pressed[device.address]
             del self.connected[device.address]
         log.info("Disconnected %s. Press a button on it to wake it and reconnect.", kind)
+
+
+async def disconnect_all() -> None:
+    """Disconnect every Zwift controller BlueZ holds, e.g. from a run that was killed or crashed.
+
+    BlueZ keeps a connection open after its client dies, and a connected controller
+    doesn't advertise, so the scan would never find it again.
+    """
+    if not shutil.which("bluetoothctl"):
+        return
+    devices = await _bluetoothctl("devices", "Connected")
+    for line in devices.splitlines():
+        parts = line.split(" ", 2)  # "Device <address> <name>"
+        if len(parts) == 3 and parts[2].startswith("Zwift"):
+            log.info("Disconnecting %s (%s)", parts[2], parts[1])
+            await _bluetoothctl("disconnect", parts[1])
+
+
+async def _bluetoothctl(*args: str) -> str:
+    proc = await asyncio.create_subprocess_exec(
+        "bluetoothctl", *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+    )
+    stdout, _ = await proc.communicate()
+    return stdout.decode(errors="replace")

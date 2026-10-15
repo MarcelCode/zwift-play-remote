@@ -1,6 +1,6 @@
 # zwift-play-remote
 
-Control Claude Code's agent view (`claude agents`) with Zwift Play or Zwift Click controllers over Bluetooth. You can steer several agents while riding an ERG workout.
+Control Claude Code's agent view (`claude agents`) with Zwift Play or Zwift Click (v2) controllers over Bluetooth. You can steer several agents while riding an ERG workout.
 
 ```
 Zwift Play ──BLE──▶ zwift-remote ──keystrokes──▶ pseudo-terminal running `claude agents`
@@ -24,7 +24,7 @@ Disconnect the controllers from Zwift and Zwift Companion first, because only on
 
 ## Usage
 
-> **Press a button to wake the controllers.** Zwift Play and Zwift Click fall asleep when idle and are invisible over Bluetooth until you press a button. Press any button on **each** controller (both Play halves) when `zwift-remote` starts. That first press only wakes the controller and isn't forwarded to Claude Code. If a controller falls asleep mid-ride, press a button on it once more and it reconnects within a few seconds.
+> **Press a button to wake the controllers.** Zwift Play and Zwift Click fall asleep when idle and are invisible over Bluetooth until you press a button. Press any button on **each** controller (both Play or Click v2 halves) when `zwift-remote` starts. That first press only wakes the controller and isn't forwarded to Claude Code. If a controller falls asleep mid-ride, press a button on it once more and it reconnects within a few seconds.
 
 1. Check the controllers and the button names:
 
@@ -42,6 +42,8 @@ Disconnect the controllers from Zwift and Zwift Companion first, because only on
 
    `run` waits up to 30 s for the controllers, or until you press Ctrl+C, and then starts Claude Code. Connection messages go to `~/.cache/zwift-play-remote.log` after that.
 
+On exit (Ctrl+C in `events`, or quitting Claude Code in `run`), the controllers are disconnected, which takes a couple of seconds. Pressing Ctrl+C again doesn't skip this. If the daemon gets killed some other way, BlueZ keeps the controllers connected, and the next start disconnects them first.
+
 ## Button map
 
 Defaults in [`config.toml`](config.toml):
@@ -55,9 +57,8 @@ Defaults in [`config.toml`](config.toml):
 | B | `Escape` | close peek, clear input, interrupt |
 | Y | hold `Space` | push-to-talk (voice mode `hold`) |
 | Z | `Space` | peek at selected session |
-| Left paddle | `1` | pick option 1 |
-| Right paddle | `2` | pick option 2 |
-| Click − / + | `Up` / `Down` | move between sessions |
+| Left paddle / left shift (Click v2) | `1` | pick option 1 |
+| Right paddle / right shift (Click v2) | `2` | pick option 2 |
 
 Typical loop: `←` → `Z` on the top row → hold `Y` and talk → `A` → `←`.
 
@@ -75,9 +76,10 @@ Binding types: `"key"` is sent on press. `{ tap = "k", long = "k2" }` sends `k` 
 |---|---|---|
 | Zwift Play, firmware 1.x (up to 1.3.1) | `PlayKeyPadStatus` | implemented |
 | Zwift Play, firmware 2.x (2.0.1) | `RideKeyPadStatus` | implemented |
-| Zwift Click | `ClickKeyPadStatus` | implemented |
+| Zwift Click | `ClickKeyPadStatus` | implemented, untested |
+| Zwift Click v2 | `RideKeyPadStatus` | **tested on hardware** |
 | Zwift Ride | `RideKeyPadStatus` | implemented, untested |
-| Zwift Click v2 / Ride v2 on locked firmware | needs Zwift unlock | not supported |
+| Ride v2 / Click v2 on locked firmware | needs Zwift unlock | not supported |
 
 The decoders are unit-tested against the documented protocol but haven't been verified on hardware yet. Once you have, record your working firmware versions here, and don't update the firmware without checking that the controllers still connect afterwards. Protocol details and sources are in [`docs/protocol.md`](docs/protocol.md).
 

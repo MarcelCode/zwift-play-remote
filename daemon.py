@@ -22,7 +22,7 @@ from pathlib import Path
 
 from inject.keys import encode
 from zwiftplay import protocol
-from zwiftplay.ble import WAKE_HINT, ControllerManager
+from zwiftplay.ble import WAKE_HINT, ControllerManager, disconnect_all
 from zwiftplay.events import ButtonDown, ButtonUp
 
 DEFAULT_CONFIG = Path(__file__).with_name("config.toml")
@@ -188,6 +188,7 @@ async def run(config: Config, command: list[str], wait_seconds: float, console: 
     try:
         return await run_in_pty(command, on_start)
     finally:
+        logging.getLogger().addHandler(console)
         ble_task.cancel()
         await asyncio.gather(ble_task, return_exceptions=True)
 
@@ -227,6 +228,10 @@ def main() -> None:
             sys.exit(asyncio.run(run(config, command, getattr(args, "wait", 30), console)))
     except KeyboardInterrupt:
         pass
+    finally:
+        # A second Ctrl+C interrupts the graceful disconnect; make sure the controllers are released anyway.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        asyncio.run(disconnect_all())
 
 
 if __name__ == "__main__":

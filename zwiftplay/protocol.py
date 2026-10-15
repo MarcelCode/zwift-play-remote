@@ -101,9 +101,10 @@ def decode_buttons(data: bytes) -> frozenset[str] | None:
 
 def decode_battery(data: bytes) -> int | None:
     """Return the battery percentage from a battery notification, None for other messages."""
-    if len(data) < 2 or data[0] != BATTERY_NOTIFICATION:
+    # The level is the value of the payload's single varint field: field 1 on the Play, field 2 on the Click v2.
+    if len(data) < 3 or data[0] != BATTERY_NOTIFICATION:
         return None
-    return _first(_fields(data[1:]), 1)
+    return data[2]
 
 
 def _decode_play(payload: bytes) -> frozenset[str]:

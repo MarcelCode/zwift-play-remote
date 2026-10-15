@@ -1,7 +1,7 @@
 # Command run inside the pseudo-terminal the controllers type into.
 command = ["claude", "agents"]
 
-# How many controllers to wait for before starting (2 for a Zwift Play, 1 for a Click).
+# How many controllers to wait for before starting (2 for a Zwift Play or Click v2, 1 for a Click).
 controllers = 2
 
 long_press_ms = 500   # hold this long to trigger a `long` binding
@@ -16,7 +16,7 @@ hold_repeat_ms = 30   # `hold` bindings repeat this often, like keyboard auto-re
 #
 # Buttons: navigationUp/Down/Left/Right, onOffLeft, sideButtonLeft, paddleLeft (left Play),
 # a, b, y, z, onOffRight, sideButtonRight, paddleRight (right Play),
-# shiftUpLeft, shiftUpRight (Click minus/plus; Play firmware 2 side buttons),
+# shiftUpLeft, shiftUpRight (Click v2 shift buttons; Click minus/plus; Play firmware 2 side buttons),
 # shiftDownLeft, shiftDownRight, powerUpLeft, powerUpRight (Zwift Ride).
 [buttons]
 navigationLeft = "left"                                   # back to the agent list
@@ -29,5 +29,5 @@ y = { hold = "space" }                                    # push-to-talk (voice 
 z = "space"                                               # peek at selected session
 paddleLeft = "1"                                          # option 1
 paddleRight = "2"                                         # option 2 (or "shift+tab" for permission mode)
-shiftUpLeft = "up"                                        # Click minus
-shiftUpRight = "down"                                     # Click plus
+shiftUpLeft = "1"                                         # option 1 (Click v2 left shift)
+shiftUpRight = "2"                                        # option 2 (Click v2 right shift)

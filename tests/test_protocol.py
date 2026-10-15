@@ -93,3 +93,15 @@ def test_controller_kind():
 
 def test_diff_releases_first():
     assert diff(frozenset({"a", "y"}), frozenset({"y", "z"})) == [ButtonUp("a"), ButtonDown("z")]
+
+
+def test_click_v2_battery():
+    # Captured from a Click v2: the level is in field 2, not field 1.
+    assert protocol.decode_battery(bytes.fromhex("191064")) == 100
+
+
+def test_click_v2_captured_presses():
+    assert protocol.decode_buttons(bytes.fromhex("2308fffeffff0f")) == {"z"}
+    assert protocol.decode_buttons(bytes.fromhex("2308fdffffff0f")) == {"navigationUp"}
+    assert protocol.decode_buttons(bytes.fromhex("2308ffdfffff0f")) == {"shiftUpRight"}
+    assert protocol.decode_buttons(bytes.fromhex("2308ffffffff0f")) == frozenset()
