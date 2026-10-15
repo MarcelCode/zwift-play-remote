@@ -6,13 +6,14 @@ controllers = 2
 
 long_press_ms = 500   # hold this long to trigger a `long` binding
 long_repeat_ms = 150  # then repeat the `long` key this often while held
-hold_repeat_ms = 30   # `hold` bindings repeat this often, like keyboard auto-repeat
+hold_repeat_ms = 30   # `hold` and `toggle` bindings repeat this often, like keyboard auto-repeat
 
 # Button -> key. Keys: up down left right home end pageup pagedown enter escape
 # space tab shift+tab backspace ctrl+<letter>, or any single character.
 #   "key"                         sent on press
 #   { tap = "k", long = "k2" }    tap on short press, k2 (repeating) on long press
 #   { hold = "k" }                repeated while held; for push-to-talk
+#   { toggle = "k" }              repeated from one press until the next press of any button
 #
 # Buttons: navigationUp/Down/Left/Right, onOffLeft, sideButtonLeft, paddleLeft (left Play),
 # a, b, y, z, onOffRight, sideButtonRight, paddleRight (right Play),
@@ -25,7 +26,7 @@ navigationUp = { tap = "up", long = "pageup" }            # previous session / s
 navigationDown = { tap = "down", long = "pagedown" }      # next session / scroll
 a = "enter"                                               # attach / send / dispatch
 b = "escape"                                              # close peek / clear / interrupt
-y = { hold = "space" }                                    # push-to-talk (voice mode "hold" on Space)
+y = { toggle = "space" }                                  # dictate: press to start, press again to stop (voice mode "hold")
 z = "space"                                               # peek at selected session
 paddleLeft = "1"                                          # option 1
 paddleRight = "2"                                         # option 2 (or "shift+tab" for permission mode)

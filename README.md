@@ -55,16 +55,16 @@ Defaults in [`config.toml`](config.toml):
 | D-pad up / down | `Up` / `Down`, long press `PgUp` / `PgDn` | move between sessions / scroll an attached session |
 | A | `Enter` | attach / send reply / dispatch |
 | B | `Escape` | close peek, clear input, interrupt |
-| Y | hold `Space` | push-to-talk (voice mode `hold`) |
+| Y | `Space`, repeated until the next press | dictate: press to start, press again to stop (voice mode `hold`) |
 | Z | `Space` | peek at selected session |
 | Left paddle / left shift (Click v2) | `1` | pick option 1 |
 | Right paddle / right shift (Click v2) | `2` | pick option 2 |
 
-Typical loop: `←` → `Z` on the top row → hold `Y` and talk → `A` → `←`.
+Typical loop: `←` → `Z` on the top row → `Y`, talk, `Y` → `A` → `←`.
 
-Push-to-talk repeats the key every 30 ms while Y is held, the way keyboard auto-repeat does. Claude Code's voice dictation treats that as a held key. If you changed the push-to-talk key in `~/.claude/keybindings.json`, change `y = { hold = "..." }` to match.
+Dictation: Y starts sending `Space` every 30 ms, the way a held key auto-repeats, and Claude Code's voice dictation (hold mode) treats that as a held key. The next press of Y stops it. Pressing any other button also stops it before that button's key is sent. This keeps Claude Code in hold mode, because the docs say dictation in agent view's peek reply and dispatch input only works there. To send automatically when the recording stops, set `"autoSubmit": true` in the `voice` settings. If you changed the push-to-talk key in `~/.claude/keybindings.json`, change `y = { toggle = "..." }` to match. For real push-to-talk, use `y = { hold = "space" }`.
 
-Binding types: `"key"` is sent on press. `{ tap = "k", long = "k2" }` sends `k` on a short press and repeats `k2` on a long press. `{ hold = "k" }` repeats `k` while the button is held.
+Binding types: `"key"` is sent on press. `{ tap = "k", long = "k2" }` sends `k` on a short press and repeats `k2` on a long press. `{ hold = "k" }` repeats `k` while the button is held. `{ toggle = "k" }` repeats `k` from one press until the next press of any button.
 
 ## Notifications
 

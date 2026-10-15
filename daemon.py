@@ -36,6 +36,7 @@ class Binding:
     tap: bytes | None = None  # sent on press (or on release if `long` is set and wasn't reached)
     long: bytes | None = None  # sent after a long press, repeated while held
     hold: bytes | None = None  # repeated while held, like keyboard auto-repeat (push-to-talk)
+    toggle: bytes | None = None  # like `hold`, but from one press until the next press of any button
 
 
 @dataclass(frozen=True)
@@ -75,13 +76,21 @@ class Mapper:
         self.send = send
         self._held: dict[str, asyncio.Task] = {}
         self._long_fired: set[str] = set()
+        self._toggled: dict[str, asyncio.Task] = {}
 
     def handle(self, event: ButtonDown | ButtonUp) -> None:
         binding = self.config.buttons.get(event.button)
         if binding is None:
             return
         if isinstance(event, ButtonDown):
-            if binding.hold:
+            # Any press ends a running toggle first, so e.g. Escape isn't followed by more repeats.
+            stopped = self._stop_toggles()
+            if binding.toggle:
+                if event.button not in stopped:
+                    self._toggled[event.button] = asyncio.get_running_loop().create_task(
+                        self._repeat(binding.toggle, self.config.hold_repeat_ms)
+                    )
+            elif binding.hold:
                 self._start(event.button, self._repeat(binding.hold, self.config.hold_repeat_ms))
             elif binding.long:
                 self._start(event.button, self._long_press(event.button, binding.long))
@@ -95,6 +104,13 @@ class Mapper:
         if binding.long and binding.tap and event.button not in self._long_fired:
             self.send(binding.tap)
         self._long_fired.discard(event.button)
+
+    def _stop_toggles(self) -> set[str]:
+        for task in self._toggled.values():
+            task.cancel()
+        stopped = set(self._toggled)
+        self._toggled.clear()
+        return stopped
 
     def _start(self, button: str, coro) -> None:
         self._held[button] = asyncio.get_running_loop().create_task(coro)

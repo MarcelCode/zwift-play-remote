@@ -72,7 +72,7 @@ def test_default_config_loads():
     config = load_config(DEFAULT_CONFIG)
     assert config.command == ["claude", "agents"]
     assert config.buttons["a"] == Binding(tap=b"\r")
-    assert config.buttons["y"] == Binding(hold=b" ")
+    assert config.buttons["y"] == Binding(toggle=b" ")
 
 
 def test_unknown_button_is_rejected(tmp_path: Path):
@@ -80,3 +80,39 @@ def test_unknown_button_is_rejected(tmp_path: Path):
     path.write_text('[buttons]\nX = "up"\n')
     with pytest.raises(ValueError, match="unknown button"):
         load_config(path)
+
+
+def click(mapper: Mapper, button: str) -> None:
+    mapper.handle(ButtonDown(button))
+    mapper.handle(ButtonUp(button))
+
+
+def test_toggle_repeats_from_first_press_until_second_press():
+    sent = []
+    mapper = Mapper(make_config(y=Binding(toggle=b" ")), sent.append)
+
+    async def go():
+        click(mapper, "y")
+        await asyncio.sleep(0.1)
+        click(mapper, "y")
+        stopped_at = len(sent)
+        await asyncio.sleep(0.05)
+        return stopped_at
+
+    stopped_at = asyncio.run(go())
+    assert 5 <= len(sent) <= 12 and set(sent) == {b" "}
+    assert len(sent) == stopped_at
+
+
+def test_other_button_stops_toggle_before_its_key():
+    sent = []
+    mapper = Mapper(make_config(y=Binding(toggle=b" "), b=Binding(tap=b"\x1b")), sent.append)
+
+    async def go():
+        click(mapper, "y")
+        await asyncio.sleep(0.05)
+        click(mapper, "b")
+        await asyncio.sleep(0.05)
+
+    asyncio.run(go())
+    assert sent[-1] == b"\x1b" and set(sent[:-1]) == {b" "}
